@@ -1,15 +1,15 @@
 {
-  "name": "puregym-alerts",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:downeyfe/puregym-alerts.git"
-  }
+    "name": "puregym-alerts",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {
+        "start": "node index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "downeyfe",
+    "license": "ISC",
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:downeyfe/puregym-alerts.git"
+    }
 }
