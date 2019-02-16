@@ -57,31 +57,30 @@ function logIn({ loginCookies, requestToken }) {
   };
 
   const req = https.request(options, (res) => {
-    const data = [];
+    if (res.statusCode < 400) {
+      const data = [];
 
-    res.on('data', (chunk) => {
-      data.push(chunk);
-    });
+      res.on('data', (chunk) => {
+        data.push(chunk);
+      });
 
-    res.on('end', () => {
-      const cookies = res.headers['set-cookie']
-        .map((cookie) => {
-          return cookie.split('; ')[0];
-        })
-        .join('; ');
+      res.on('end', () => {
+        const cookies = res.headers['set-cookie']
+          .map((cookie) => {
+            return cookie.split('; ')[0];
+          })
+          .join('; ');
 
-      if (res.statusCode < 400) {
         getMembersPage({
           loginCookies,
           apiCookies: cookies,
           requestToken,
         });
-      }
-    });
+      });
+    }
   });
 
   req.write(JSON.stringify(formData));
-
   req.end();
 }
 
