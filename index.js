@@ -1,104 +1,117 @@
 const https = require('https');
+const host = 'www.puregym.com';
 
-const pageOptions = {
+const options = {
   method: 'GET',
-  host: 'www.puregym.com',
+  host,
   path: '/login/',
   headers: {
     Cookie: '',
   },
 };
 
-const pageReq = https.request(pageOptions, (pageRes) => {
-  if (pageRes.statusCode < 400) {
-    const pageData = [];
+const req = https.request(options, (res) => {
+  if (res.statusCode < 400) {
+    const data = [];
 
-    pageRes.on('data', (chunk) => {
-      pageData.push(chunk);
+    res.on('data', (chunk) => {
+      data.push(chunk);
     });
 
-    pageRes.on('end', () => {
-      const fullData = pageData.join('');
-      const regex = /<form id="__AjaxAntiForgeryForm"(?:.*)value="((\w|-)+)"(?:.*)<\/form>/;
-      const matches = fullData.match(regex);
+    res.on('end', () => {
+      const fullData = data.join('');
+      const tokenRegex = /<form id="__AjaxAntiForgeryForm"(?:.*)value="((\w|-)+)"(?:.*)<\/form>/;
+      const matches = fullData.match(tokenRegex);
 
       if (matches && matches.length) {
         const requestToken = matches[1];
-        const pageCookies = pageRes.headers['set-cookie']
+        const cookies = res.headers['set-cookie']
           .map((cookie) => {
             return cookie.split('; ')[0];
           })
           .join('; ');
-        const formData = {
-          email: process.argv[2],
-          pin: process.argv[3],
-        };
 
-        const apiOptions = {
-          method: 'POST',
-          host: 'www.puregym.com',
-          path: '/api/members/login/',
-          headers: {
-            'Content-Type': 'application/json',
-            __requestVerificationToken: requestToken,
-            Cookie: `${pageCookies}; __RequestVerificationToken=${requestToken}`,
-          },
-        };
-
-        const apiReq = https.request(apiOptions, (apiRes) => {
-          const apiData = [];
-
-          apiRes.on('data', (chunk) => {
-            apiData.push(chunk);
-          });
-
-          apiRes.on('end', () => {
-            const apiCookies = apiRes.headers['set-cookie']
-              .map((cookie) => {
-                return cookie.split('; ')[0];
-              })
-              .join('; ');
-
-            if (apiRes.statusCode < 400) {
-              const membersOptions = {
-                method: 'GET',
-                host: 'www.puregym.com',
-                path: '/members/',
-                headers: {
-                  cookie: `${pageCookies}; ${apiCookies}; __RequestVerificationToken=${requestToken}`,
-                },
-              };
-
-              const membersReq = https.request(membersOptions, (membersRes) => {
-                const membersData = [];
-
-                membersRes.on('data', (chunk) => {
-                  membersData.push(chunk);
-                });
-
-                membersRes.on('end', () => {
-                  const fullData = membersData.join('');
-                  const memberRegex = /(\d+) people/;
-                  const result = fullData.match(memberRegex);
-
-                  if (result && result.length) {
-                    console.log(`result`, result[1]);
-                  }
-
-                });
-              });
-
-              membersReq.end();
-            }
-          });
-        });
-
-        apiReq.write(JSON.stringify(formData));
-
-        apiReq.end();
+        logIn({ loginCookies: cookies, requestToken });
       }
     });
   }
 });
 
-pageReq.end();
+req.end();
+
+function logIn({ loginCookies, requestToken }) {
+  const formData = {
+    email: process.argv[2],
+    pin: process.argv[3],
+  };
+
+  const options = {
+    method: 'POST',
+    host,
+    path: '/api/members/login/',
+    headers: {
+      'Content-Type': 'application/json',
+      __requestVerificationToken: requestToken,
+      Cookie: `${loginCookies}; __RequestVerificationToken=${requestToken}`,
+    },
+  };
+
+  const req = https.request(options, (res) => {
+    const data = [];
+
+    res.on('data', (chunk) => {
+      data.push(chunk);
+    });
+
+    res.on('end', () => {
+      const cookies = res.headers['set-cookie']
+        .map((cookie) => {
+          return cookie.split('; ')[0];
+        })
+        .join('; ');
+
+      if (res.statusCode < 400) {
+        getMembersPage({
+          loginCookies,
+          apiCookies: cookies,
+          requestToken,
+        });
+      }
+    });
+  });
+
+  req.write(JSON.stringify(formData));
+
+  req.end();
+}
+
+function getMembersPage({ loginCookies, apiCookies, requestToken }) {
+  const options = {
+    method: 'GET',
+    host,
+    path: '/members/',
+    headers: {
+      cookie: `${loginCookies}; ${apiCookies}; __RequestVerificationToken=${requestToken}`,
+    },
+  };
+
+  const req = https.request(options, (res) => {
+    const data = [];
+
+    res.on('data', (chunk) => {
+      data.push(chunk);
+    });
+
+    res.on('end', () => {
+      const fullData = data.join('');
+      const memberRegex = /(\d+) people/;
+      const matches = fullData.match(memberRegex);
+
+      if (matches && matches.length) {
+        console.log(`Currently there are ${matches[1]} people at the gym.`);
+      }
+    });
+  });
+
+  req.end();
+}
